@@ -7,6 +7,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   version: '1.0.0',
   orientation: 'portrait',
   userInterfaceStyle: 'light',
+  scheme: 'miso-ai',
   splash: {
     resizeMode: 'contain',
     backgroundColor: '#F2D894'

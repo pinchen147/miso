@@ -1,57 +1,29 @@
 import React from 'react';
-// @ts-ignore - expo-router types provided via expo package
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { Text, View, ActivityIndicator } from 'react-native';
-import { useFonts } from 'expo-font';
-
-// helper to lowercase recursively
-function toLower(node: any): any {
-  if (typeof node === 'string' || typeof node === 'number') {
-    return String(node).toLowerCase();
-  }
-  if (Array.isArray(node)) {
-    return node.map(toLower);
-  }
-  return node;
-}
+import { View, ActivityIndicator, Text } from 'react-native';
+import {
+  useFonts,
+  LibreBaskerville_400Regular,
+  LibreBaskerville_400Regular_Italic,
+  LibreBaskerville_700Bold,
+} from '@expo-google-fonts/libre-baskerville';
 
 export default function RootLayout() {
-  // Load custom fonts
   const [fontsLoaded] = useFonts({
-    GenRyuHead: require('../src/font/GenRyuMin2-H.ttf'),
-    GenRyuBody: require('../src/font/GenRyuMin2-B.ttf'),
+    LibreBaskerville_400Regular,
+    LibreBaskerville_400Regular_Italic,
+    LibreBaskerville_700Bold,
   });
 
-  // Wait until fonts are loaded
   if (!fontsLoaded) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <ActivityIndicator size="large" />
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#F2D894' }}>
+        <ActivityIndicator size="large" color="#8B4513" />
       </View>
     );
   }
 
-  // Apply global font & lowercase once fonts are ready
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  (Text as any).defaultProps = {
-    ...(Text as any).defaultProps,
-    style: [{ fontFamily: 'GenRyuBody', textTransform: 'lowercase' }, (Text as any).defaultProps?.style],
-  };
-
-  // Patch the render method once
-  // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-  // @ts-ignore
-  if (!Text.__patchedForLowercase) {
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    Text.__patchedForLowercase = true;
-    const oldRender = (Text as any).render;
-    (Text as any).render = function (...args: any[]) {
-      const origin = oldRender.apply(this, args);
-      return React.cloneElement(origin, origin.props, toLower(origin.props.children));
-    };
-  }
 
   return (
     <>
@@ -59,18 +31,25 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerShown: true,
-          headerTitle: 'miso',
+          headerTitle: 'Miso',
           headerTitleStyle: {
-            fontFamily: 'GenRyuHead',
-            fontSize: 28,
+            fontFamily: 'LibreBaskerville_700Bold',
+            fontSize: 24,
             color: '#8B4513'
           },
-          headerStyle: { backgroundColor: '#F2D894', shadowColor: 'transparent' },
+          headerStyle: { backgroundColor: '#F2D894' },
+          headerShadowVisible: false,
+          headerTintColor: '#8B4513',
           contentStyle: { backgroundColor: '#F2D894' }
         }}
       >
         <Stack.Screen name="index" />
-        <Stack.Screen name="session" />
+        <Stack.Screen
+          name="session"
+          options={{
+            headerBackTitle: 'Recipes',
+          }}
+        />
       </Stack>
     </>
   );

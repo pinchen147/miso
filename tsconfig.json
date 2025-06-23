@@ -3,6 +3,7 @@
   "compilerOptions": {
     "strict": true,
     "moduleResolution": "bundler",
+    "jsx": "react-native",
     "baseUrl": ".",
     "paths": {
       "@/*": [
