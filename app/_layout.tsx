@@ -19,8 +19,8 @@ function toLower(node: any): any {
 export default function RootLayout() {
   // Load custom fonts
   const [fontsLoaded] = useFonts({
-    'GenRyuHead': require('../assets/font/GenRyuMin2TW-H.ttf'),
-    'GenRyuBody': require('../assets/font/GenRyuMin2TW-B.ttf'),
+    GenRyuHead: require('../src/font/GenRyuMin2-H.ttf'),
+    GenRyuBody: require('../src/font/GenRyuMin2-B.ttf'),
   });
 
   // Wait until fonts are loaded

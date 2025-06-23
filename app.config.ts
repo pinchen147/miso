@@ -13,7 +13,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   assetBundlePatterns: [
     '**/*',
-    'assets/font/*.ttf'
+    'src/font/*.ttf'
   ],
   ios: {
     supportsTablet: false,

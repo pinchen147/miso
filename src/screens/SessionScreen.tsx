@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     fontSize: 36,
     fontWeight: 'bold',
     color: '#fff',
-    fontFamily: 'serif',
+    fontFamily: 'GenRyuHead',
   },
   placeholder: {
     width: 38,
