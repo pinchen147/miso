@@ -21,6 +21,6 @@ export function ThemedText({ style, children, ...rest }: TextProps) {
 
 const styles = StyleSheet.create({
   default: {
-    fontFamily: 'GenRyuMin2-B', // body font
+    fontFamily: 'GenRyuBody', // body font
   },
-}); 
+});
