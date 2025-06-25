@@ -129,11 +129,7 @@ export default function RecipeDetailScreen() {
   return (
     <Container>
       <Header>
-        <BackIconButton onPress={() => router.back()}>
-          <Ionicons name="arrow-back" size={24} color="#8B4513" />
-        </BackIconButton>
         <HeaderTitle numberOfLines={1}>{recipe.title}</HeaderTitle>
-        <PlaceholderView />
       </Header>
 
       <ContentScroll>

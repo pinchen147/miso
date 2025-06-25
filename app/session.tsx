@@ -1,12 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { View, StyleSheet, SafeAreaView } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useCookingSession } from '@/hooks/useCookingSession';
 import { CameraHeader } from '@/components/cooking/CameraHeader';
-import { StepDisplay } from '@/components/cooking/StepDisplay';
-import { CookingControls } from '@/components/cooking/CookingControls';
-import { AIStatusIndicator } from '@/components/cooking/AIStatusIndicator';
 import { LoadingState } from '@/components/cooking/LoadingState';
 import { ErrorState } from '@/components/cooking/ErrorState';
 import { PermissionState } from '@/components/cooking/PermissionState';
@@ -78,7 +75,7 @@ export default function CookingScreen() {
 
   // Main camera view
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       <CameraView 
         style={styles.camera} 
         facing={facing}
@@ -90,22 +87,8 @@ export default function CookingScreen() {
           currentStep={currentStepIndex + 1}
           totalSteps={steps.length}
         />
-
-        <StepDisplay step={currentStep} />
-
-        <CookingControls
-          isListening={isListening}
-          canGoPrevious={canGoPrevious}
-          isLastStep={isLastStep}
-          onVoiceCommand={handleVoiceCommand}
-          onPrevious={handlePreviousStep}
-          onRepeat={handleRepeatStep}
-          onNext={handleNextStep}
-        />
-
-        <AIStatusIndicator isSpeaking={isSpeaking} />
       </CameraView>
-    </SafeAreaView>
+    </View>
   );
 }
 

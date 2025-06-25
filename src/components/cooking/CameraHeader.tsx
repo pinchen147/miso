@@ -18,13 +18,7 @@ export const CameraHeader: React.FC<CameraHeaderProps> = ({
 }) => {
   return (
     <Header>
-      <BackIconButton onPress={onBack}>
-        <Ionicons name="arrow-back" size={24} color="#F2D894" />
-      </BackIconButton>
       <HeaderTitle numberOfLines={1}>{title}</HeaderTitle>
-      <StepCounter>
-        <StepCounterText>{currentStep}/{totalSteps}</StepCounterText>
-      </StepCounter>
     </Header>
   );
 };
@@ -32,7 +26,7 @@ export const CameraHeader: React.FC<CameraHeaderProps> = ({
 const Header = styled.View`
   flex-direction: row;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   padding: 16px;
   background-color: rgba(0, 0, 0, 0.3);
 `;
@@ -45,9 +39,7 @@ const HeaderTitle = styled.Text`
   font-family: LibreBaskerville_700Bold;
   font-size: 16px;
   color: #f2d894;
-  flex: 1;
   text-align: center;
-  margin: 0 16px;
 `;
 
 const StepCounter = styled.View`
