@@ -1,18 +1,21 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { router } from 'expo-router';
 import {
   ScrollView,
   Image,
   TouchableOpacity,
+  ActivityIndicator,
 } from 'react-native';
 import styled from 'styled-components/native';
 import { Ionicons } from '@expo/vector-icons';
+import { supabase } from '@/lib/supabase';
+import { Recipe } from '@/types/recipe';
 
 // --------------------------------------------------
-// Types & Mock Data
+// Interfaces for app compatibility
 // --------------------------------------------------
-export interface Recipe {
-  id: number;
+export interface AppRecipe {
+  id: string;
   title: string;
   origin: string;
   description: string;
@@ -20,45 +23,6 @@ export interface Recipe {
   timeInMins: number;
   isFeatured: boolean;
 }
-
-const recipes: Recipe[] = [
-  {
-    id: 1,
-    title: 'Classic Miso Soup',
-    origin: 'Japanese',
-    description: 'A comforting soup made with dashi stock, miso paste, tofu, and seaweed.',
-    imageUrl: 'https://images.unsplash.com/photo-1543353071-873f17a7a088',
-    timeInMins: 15,
-    isFeatured: true,
-  },
-  {
-    id: 2,
-    title: 'Spaghetti Carbonara',
-    origin: 'Italian',
-    description: 'Creamy pasta tossed with pancetta, eggs, and plenty of Parmesan cheese.',
-    imageUrl: 'https://images.unsplash.com/photo-1525755662778-989d0524087e',
-    timeInMins: 25,
-    isFeatured: false,
-  },
-  {
-    id: 3,
-    title: 'Tacos al Pastor',
-    origin: 'Mexican',
-    description: 'Juicy pork tacos marinated with chilies and pineapple, served on warm tortillas.',
-    imageUrl: 'https://images.unsplash.com/photo-1617191519307-b6fe10499c42',
-    timeInMins: 40,
-    isFeatured: false,
-  },
-  {
-    id: 4,
-    title: 'Pad Thai',
-    origin: 'Thai',
-    description: 'Stir-fried rice noodles with shrimp, tofu, peanuts, and tamarind sauce.',
-    imageUrl: 'https://images.unsplash.com/photo-1625946341056-361ef3e50918',
-    timeInMins: 30,
-    isFeatured: false,
-  },
-];
 
 // --------------------------------------------------
 // Styled-components
@@ -171,14 +135,34 @@ const ListTimeRow = styled(TimeRow)`
   margin-top: 6px;
 `;
 
+const LoadingContainer = styled.View`
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+`;
+
+const ErrorContainer = styled.View`
+  flex: 1;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+`;
+
+const ErrorText = styled.Text`
+  font-family: LibreBaskerville_400Regular;
+  font-size: 16px;
+  color: #8b4513;
+  text-align: center;
+`;
+
 // --------------------------------------------------
 // Components
 // --------------------------------------------------
-const FeaturedRecipeCard: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
+const FeaturedRecipeCard: React.FC<{ recipe: AppRecipe }> = ({ recipe }) => {
   const handlePress = () =>
     router.push({
       pathname: '/session',
-      params: { recipeId: String(recipe.id), recipeName: recipe.title },
+      params: { recipeId: recipe.id, recipeName: recipe.title },
     });
 
   return (
@@ -199,11 +183,11 @@ const FeaturedRecipeCard: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
   );
 };
 
-const RecipeListItem: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
+const RecipeListItem: React.FC<{ recipe: AppRecipe }> = ({ recipe }) => {
   const handlePress = () =>
     router.push({
       pathname: '/session',
-      params: { recipeId: String(recipe.id), recipeName: recipe.title },
+      params: { recipeId: recipe.id, recipeName: recipe.title },
     });
 
   return (
@@ -222,7 +206,7 @@ const RecipeListItem: React.FC<{ recipe: Recipe }> = ({ recipe }) => {
   );
 };
 
-const RecipeList: React.FC<{ data: Recipe[] }> = ({ data }) => (
+const RecipeList: React.FC<{ data: AppRecipe[] }> = ({ data }) => (
   <>
     {data.map((recipe, idx) => (
       <React.Fragment key={recipe.id}>
@@ -237,7 +221,68 @@ const RecipeList: React.FC<{ data: Recipe[] }> = ({ data }) => (
 // Screen Component
 // --------------------------------------------------
 export default function HomeScreen() {
-  const featuredRecipe = recipes.find((r) => r.isFeatured)!;
+  const [recipes, setRecipes] = useState<AppRecipe[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchRecipes();
+  }, []);
+
+  const fetchRecipes = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('recipes')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) {
+        console.error('Error fetching recipes:', error);
+        setError('Failed to load recipes');
+        return;
+      }
+
+      const appRecipes: AppRecipe[] = data.map((recipe: Recipe, index: number) => ({
+        id: recipe.id,
+        title: recipe.title,
+        origin: recipe.cuisine_type || 'Unknown',
+        description: recipe.description || 'No description available',
+        imageUrl: recipe.image_url || 'https://images.unsplash.com/photo-1543353071-873f17a7a088',
+        timeInMins: recipe.time || 30,
+        isFeatured: index === 0,
+      }));
+
+      setRecipes(appRecipes);
+    } catch (err) {
+      console.error('Error in fetchRecipes:', err);
+      setError('Failed to load recipes');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <ScreenContainer>
+        <LoadingContainer>
+          <ActivityIndicator size="large" color="#8B4513" />
+        </LoadingContainer>
+      </ScreenContainer>
+    );
+  }
+
+  if (error) {
+    return (
+      <ScreenContainer>
+        <ErrorContainer>
+          <ErrorText>{error}</ErrorText>
+        </ErrorContainer>
+      </ScreenContainer>
+    );
+  }
+
+  const featuredRecipe = recipes.find((r) => r.isFeatured);
   const otherRecipes = recipes.filter((r) => !r.isFeatured);
 
   return (

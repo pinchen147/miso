@@ -1,28 +1,37 @@
 export interface Recipe {
   id: string;
+  user_id?: string;
   title: string;
-  description: string;
-  featured?: boolean;
-  cuisine?: string;
-  difficulty?: 'Easy' | 'Medium' | 'Hard';
-  estimatedTime?: number; // in minutes
-  ingredients?: Ingredient[];
+  description: string | null;
+  cuisine_type: string | null;
+  created_at?: string;
+  image_url: string | null;
+  time: number | null;
+  ingredients?: RecipeIngredient[];
   steps?: RecipeStep[];
-  image?: string;
 }
 
 export interface Ingredient {
   id: string;
   name: string;
-  quantity: string;
-  unit?: string;
+  embedding?: any;
+  properties?: any[];
+}
+
+export interface RecipeIngredient {
+  id: string;
+  recipe_id: string;
+  ingredient_id: string;
+  quantity: number | null;
+  unit: string | null;
+  preparation: string | null;
+  ingredient?: Ingredient;
 }
 
 export interface RecipeStep {
   id: string;
-  stepNumber: number;
+  recipe_id: string;
+  step_number: number;
   instruction: string;
-  duration?: number; // in minutes
-  temperature?: number;
-  ingredients?: string[]; // ingredient IDs involved in this step
+  embedding?: any;
 }
