@@ -42,10 +42,13 @@ export default function RecipeDetailScreen() {
 
       if (recipeError) {
         console.error('Error fetching recipe:', recipeError);
+        console.log('Recipe error details:', recipeError);
         setError('Failed to load recipe');
         return;
       }
 
+      console.log('Fetched recipe data:', recipeData);
+      console.log('Recipe ID being used:', id);
       setRecipe(recipeData);
 
       // Fetch ingredients
@@ -59,7 +62,9 @@ export default function RecipeDetailScreen() {
 
       if (ingredientsError) {
         console.error('Error fetching ingredients:', ingredientsError);
+        console.log('Ingredients error details:', ingredientsError);
       } else {
+        console.log('Fetched ingredients data:', ingredientsData);
         setIngredients(ingredientsData || []);
       }
 
@@ -72,7 +77,9 @@ export default function RecipeDetailScreen() {
 
       if (stepsError) {
         console.error('Error fetching steps:', stepsError);
+        console.log('Steps error details:', stepsError);
       } else {
+        console.log('Fetched steps data:', stepsData);
         setSteps(stepsData || []);
       }
 
@@ -144,6 +151,11 @@ export default function RecipeDetailScreen() {
             )}
           </TitleSection>
 
+          <StartButton onPress={handleStartCooking}>
+            <Ionicons name="play" size={20} color="#8B4513" />
+            <StartButtonText>Start Cooking</StartButtonText>
+          </StartButton>
+
           {recipe.description && (
             <DescriptionSection>
               <SectionTitle>About</SectionTitle>
@@ -168,22 +180,53 @@ export default function RecipeDetailScreen() {
             </MetaItem>
           </MetaInfo>
 
-          {ingredients.length > 0 && (
-            <Section>
-              <SectionTitle>Ingredients</SectionTitle>
-              {ingredients.map((item) => (
-                <IngredientItem key={item.id}>
+          <Section>
+            <SectionTitle>Ingredients ({ingredients.length})</SectionTitle>
+            {ingredients.length > 0 ? (
+              ingredients.map((item, index) => (
+                <IngredientListItem key={item.id}>
                   <IngredientBullet />
-                  <IngredientText>
-                    {item.quantity && `${item.quantity} `}
-                    {item.unit && `${item.unit} `}
-                    {item.ingredient?.name || 'Unknown ingredient'}
-                    {item.preparation && `, ${item.preparation}`}
-                  </IngredientText>
-                </IngredientItem>
-              ))}
-            </Section>
-          )}
+                  <IngredientDetails>
+                    <IngredientName>
+                      {item.ingredient?.name || 'Unknown ingredient'}
+                    </IngredientName>
+                    <IngredientAmount>
+                      {item.quantity && item.unit 
+                        ? `${item.quantity} ${item.unit}`
+                        : item.quantity 
+                        ? `${item.quantity}`
+                        : item.unit 
+                        ? `${item.unit}`
+                        : 'To taste'
+                      }
+                      {item.preparation && `, ${item.preparation}`}
+                    </IngredientAmount>
+                  </IngredientDetails>
+                </IngredientListItem>
+              ))
+            ) : (
+              <NoIngredientsContainer>
+                <DebugInfo>
+                  No ingredients found for this recipe.
+                  {"\n"}
+                  {"\n"}To fix this, you need to:
+                  {"\n"}1. Add ingredients to the 'ingredients' table
+                  {"\n"}2. Link them via 'recipe_ingredients' table
+                  {"\n"}
+                  {"\n"}Recipe ID: {id}
+                </DebugInfo>
+                <SampleIngredientsTitle>Expected ingredients for this recipe:</SampleIngredientsTitle>
+                <SampleIngredientsList>
+                  <SampleIngredientItem>• Sweet potatoes - 2 large</SampleIngredientItem>
+                  <SampleIngredientItem>• White sugar - 1 cup</SampleIngredientItem>
+                  <SampleIngredientItem>• Cornstarch - 3 tbsp</SampleIngredientItem>
+                  <SampleIngredientItem>• Water - 1/4 cup</SampleIngredientItem>
+                  <SampleIngredientItem>• Sesame seeds - 2 tbsp</SampleIngredientItem>
+                  <SampleIngredientItem>• Vegetable oil - for frying</SampleIngredientItem>
+                </SampleIngredientsList>
+              </NoIngredientsContainer>
+            )}
+          </Section>
 
           {steps.length > 0 && (
             <Section>
@@ -198,11 +241,6 @@ export default function RecipeDetailScreen() {
               ))}
             </Section>
           )}
-
-          <StartButton onPress={handleStartCooking}>
-            <Ionicons name="play" size={20} color="#8B4513" />
-            <StartButtonText>Start Cooking</StartButtonText>
-          </StartButton>
         </ContentContainer>
       </ContentScroll>
     </Container>
@@ -322,6 +360,49 @@ const Section = styled.View`
   margin-bottom: 24px;
 `;
 
+const IngredientListItem = styled.View`
+  flex-direction: row;
+  align-items: flex-start;
+  margin-bottom: 16px;
+`;
+
+const IngredientNumber = styled.View`
+  width: 28px;
+  height: 28px;
+  border-radius: 14px;
+  background-color: #fce3ad;
+  justify-content: center;
+  align-items: center;
+  margin-right: 12px;
+  margin-top: 2px;
+`;
+
+const IngredientNumberText = styled.Text`
+  font-family: LibreBaskerville_700Bold;
+  font-size: 14px;
+  color: #8b4513;
+  text-align: center;
+`;
+
+const IngredientDetails = styled.View`
+  flex: 1;
+`;
+
+const IngredientName = styled.Text`
+  font-family: LibreBaskerville_700Bold;
+  font-size: 16px;
+  color: #8b4513;
+  margin-bottom: 4px;
+`;
+
+const IngredientAmount = styled.Text`
+  font-family: LibreBaskerville_400Regular;
+  font-size: 14px;
+  color: #8b4513;
+  opacity: 0.8;
+  line-height: 20px;
+`;
+
 const IngredientItem = styled.View`
   flex-direction: row;
   align-items: flex-start;
@@ -383,7 +464,7 @@ const StartButton = styled.TouchableOpacity`
   background-color: #d9a441;
   padding: 16px 32px;
   border-radius: 30px;
-  margin-top: 16px;
+  margin: 16px 0;
 `;
 
 const StartButtonText = styled.Text`
@@ -424,4 +505,42 @@ const BackButtonText = styled.Text`
   font-family: LibreBaskerville_700Bold;
   font-size: 16px;
   color: #8b4513;
+`;
+
+const DebugInfo = styled.Text`
+  font-family: LibreBaskerville_400Regular;
+  font-size: 14px;
+  color: #8b4513;
+  padding: 16px;
+  background-color: #fce3ad;
+  border-radius: 8px;
+  line-height: 20px;
+  margin-bottom: 16px;
+`;
+
+const NoIngredientsContainer = styled.View`
+  padding: 8px 0;
+`;
+
+const SampleIngredientsTitle = styled.Text`
+  font-family: LibreBaskerville_700Bold;
+  font-size: 16px;
+  color: #8b4513;
+  margin-bottom: 12px;
+`;
+
+const SampleIngredientsList = styled.View`
+  background-color: rgba(217, 164, 65, 0.1);
+  padding: 16px;
+  border-radius: 8px;
+  border-left-width: 4px;
+  border-left-color: #d9a441;
+`;
+
+const SampleIngredientItem = styled.Text`
+  font-family: LibreBaskerville_400Regular;
+  font-size: 14px;
+  color: #8b4513;
+  margin-bottom: 6px;
+  line-height: 20px;
 `;
