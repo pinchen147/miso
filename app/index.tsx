@@ -161,8 +161,7 @@ const ErrorText = styled.Text`
 const FeaturedRecipeCard: React.FC<{ recipe: AppRecipe }> = ({ recipe }) => {
   const handlePress = () =>
     router.push({
-      pathname: '/session',
-      params: { recipeId: recipe.id, recipeName: recipe.title },
+      pathname: `/recipe/${recipe.id}`,
     });
 
   return (
@@ -186,8 +185,7 @@ const FeaturedRecipeCard: React.FC<{ recipe: AppRecipe }> = ({ recipe }) => {
 const RecipeListItem: React.FC<{ recipe: AppRecipe }> = ({ recipe }) => {
   const handlePress = () =>
     router.push({
-      pathname: '/session',
-      params: { recipeId: recipe.id, recipeName: recipe.title },
+      pathname: `/recipe/${recipe.id}`,
     });
 
   return (
