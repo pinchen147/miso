@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, RefObject } from 'react';
 import { View, StyleSheet } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
@@ -24,12 +24,17 @@ export default function CookingScreen() {
     canGoPrevious,
     isListening,
     isSpeaking,
+    isAnalyzing,
+    analysisResult,
+    ragGuidance,
     handleNextStep,
     handlePreviousStep,
     handleVoiceCommand,
     handleRepeatStep,
     handleBack,
-  } = useCookingSession(recipeId as string);
+    startCameraAnalysis,
+    stopCameraAnalysis,
+  } = useCookingSession(recipeId as string, cameraRef as RefObject<CameraView>);
 
   // Loading state
   if (loading) {

@@ -51,5 +51,11 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       }
     ],
     'expo-router'
-  ]
+  ],
+  extra: {
+    supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL,
+    supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY,
+    openaiApiKey: process.env.EXPO_PUBLIC_OPENAI_API_KEY,
+    geminiApiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY,
+  }
 });
