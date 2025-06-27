@@ -24,11 +24,17 @@ export const CameraHeader: React.FC<CameraHeaderProps> = ({
 };
 
 const Header = styled.View`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
   flex-direction: row;
   align-items: center;
   justify-content: center;
   padding: 16px;
+  padding-top: 50px;
   background-color: rgba(0, 0, 0, 0.3);
+  z-index: 1;
 `;
 
 const BackIconButton = styled.TouchableOpacity`

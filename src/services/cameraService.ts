@@ -1,6 +1,7 @@
 import { CameraView } from 'expo-camera';
 import { visionService, VisionAnalysisResult } from './visionService';
 import { ragService, RAGContext } from './ragService';
+import { RecipeStep } from '@/types/recipe';
 
 export interface CameraAnalysisResult {
   visionResult: VisionAnalysisResult;
@@ -21,9 +22,9 @@ export class CameraAnalysisService {
 
   async startAnalysis(
     cameraRef: React.RefObject<CameraView>,
-    currentStep: string,
+    currentStep: RecipeStep,
     onAnalysisComplete: (result: CameraAnalysisResult) => void,
-    previousSteps?: string[]
+    completedSteps: RecipeStep[] = []
   ): Promise<void> {
     if (this.analysisInterval) {
       this.stopAnalysis();
@@ -38,18 +39,28 @@ export class CameraAnalysisService {
 
       try {
         this.isAnalyzing = true;
-        const result = await this.analyzeCurrentFrame(
+        
+        // Add timeout to prevent hanging
+        const analysisPromise = this.analyzeCurrentFrame(
           cameraRef.current,
           currentStep,
-          previousSteps
+          completedSteps
         );
+        
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('Camera analysis timeout')), 15000)
+        );
+        
+        const result = await Promise.race([analysisPromise, timeoutPromise]) as CameraAnalysisResult | null;
 
         if (result) {
           this.lastAnalysis = result;
           onAnalysisComplete(result);
+          // TTS is handled by the cooking session hook
         }
       } catch (error) {
-        console.error('Camera analysis error:', error);
+        console.error('📷 ❌ Camera analysis error:', error instanceof Error ? error.message : String(error));
+        // Don't log full error object to reduce noise
       } finally {
         this.isAnalyzing = false;
       }
@@ -66,20 +77,39 @@ export class CameraAnalysisService {
 
   private async analyzeCurrentFrame(
     camera: CameraView,
-    currentStep: string,
-    previousSteps?: string[]
+    currentStep: RecipeStep,
+    completedSteps: RecipeStep[] = []
   ): Promise<CameraAnalysisResult | null> {
     try {
-      // Capture frame
+      // Check if camera ref is still valid
+      if (!camera) {
+        console.error('📷 Camera reference is null');
+        throw new Error('Camera reference is null');
+      }
+
+      console.log('📷 Attempting to capture frame...');
+
+      // Capture frame with silent, smooth options for video-like analysis
       const photo = await camera.takePictureAsync({
         base64: true,
-        quality: 0.7, // Reduce quality for faster processing
+        quality: 0.3, // Lower quality for faster processing
         skipProcessing: true,
+        exif: false,
+        imageType: 'jpg',
+        // Silent capture option
+        shutterSound: false,
       });
 
+      if (!photo) {
+        throw new Error('No photo object returned');
+      }
+
       if (!photo.base64) {
+        console.error('📷 Photo captured but no base64 data:', photo);
         throw new Error('Failed to capture base64 image');
       }
+
+      console.log('📷 ✅ Frame captured successfully, size:', photo.base64.length);
 
       // Analyze vision
       const visionResult = await visionService.analyzeFrame(photo.base64);
@@ -87,16 +117,15 @@ export class CameraAnalysisService {
       // Get RAG context
       const ragContext = await ragService.getRelevantContext(
         visionResult,
-        currentStep,
+        currentStep.instruction,
         this.matchThreshold
       );
 
-      // Generate contextual guidance
-      const guidance = await ragService.generateContextualGuidance(
-        visionResult,
+      // Generate guidance
+      const guidance = await ragService.generateGuidance(
         currentStep,
-        ragContext,
-        previousSteps
+        visionResult,
+        completedSteps
       );
 
       return {
@@ -133,9 +162,10 @@ export class CameraAnalysisService {
   // Test method for debugging
   async testSingleAnalysis(
     camera: CameraView,
-    currentStep: string
+    currentStep: RecipeStep,
+    completedSteps: RecipeStep[] = []
   ): Promise<CameraAnalysisResult | null> {
-    return this.analyzeCurrentFrame(camera, currentStep);
+    return this.analyzeCurrentFrame(camera, currentStep, completedSteps);
   }
 }
 

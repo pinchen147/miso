@@ -91,7 +91,6 @@ CREATE OR REPLACE FUNCTION get_similar_ingredients(
 RETURNS TABLE (
   id uuid,
   name text,
-  properties jsonb,
   similarity float
 ) LANGUAGE plpgsql AS $$
 BEGIN
@@ -99,7 +98,6 @@ BEGIN
   SELECT
     ingredients.id,
     ingredients.name,
-    ingredients.properties,
     1 - (ingredients.embedding <=> query_embedding) as similarity
   FROM ingredients
   WHERE ingredients.embedding IS NOT NULL

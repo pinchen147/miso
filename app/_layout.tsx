@@ -31,7 +31,7 @@ export default function RootLayout() {
       <Stack
         screenOptions={{
           headerShown: true,
-          headerTitle: 'Miso',
+          headerTitle: 'Miso AI',
           headerTitleStyle: {
             fontFamily: 'LibreBaskerville_700Bold',
             fontSize: 24,
@@ -47,7 +47,7 @@ export default function RootLayout() {
         <Stack.Screen
           name="session"
           options={{
-            headerBackTitle: 'Recipes',
+            headerBackTitle: 'Recipe',
           }}
         />
       </Stack>

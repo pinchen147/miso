@@ -9,14 +9,14 @@ export interface Recipe {
   time: number | null;
   ingredients?: RecipeIngredient[];
   steps?: RecipeStep[];
+  required_cookware?: string[];
 }
 
 export interface Ingredient {
   id: string;
   name: string;
   embedding?: any;
-  properties?: any[];
-}
+  }
 
 export interface RecipeIngredient {
   id: string;

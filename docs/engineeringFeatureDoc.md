@@ -293,8 +293,8 @@ Our tech stack is chosen for rapid development, cross-platform reach, and robust
 
 ## 10  Next‑Step Clarifications
 
-1. **Wake‑word engine** – Is it acceptable to launch v0.8 with a press-to-talk button and add always-listening wake-word in a later update (for simplicity)? **✔ Yes,** initial version can use a manual voice trigger if needed, but try Porcupine if time permits.
-2. **Subscription backend** – Should we integrate RevenueCat for cross-platform readiness, or keep it simple with StoreKit for now? **✔ Use RevenueCat,** as it will simplify receipt management and allow easier expansion to Android.
+1. **Wake‑word engine** – Is it acceptable to launch v0.8 with a press-to-talk button and add always-listening wake-word in a later update (for simplicity)? **No,** Use Porcupine hotword wake up
+2. **Subscription backend** – Should we integrate RevenueCat for cross-platform readiness, or keep it simple with StoreKit for now? **✔ Use RevenueCat,** as it will simplify receipt management and allow easier expansion to Android. implementing payment comes later after mvp is built.
 3. **Image analysis privacy** – Any requirement to keep vision processing on-device for privacy (or specific region hosting for EU)? **✔ Not required** at this stage; using cloud (Gemini) is fine, just be transparent to users. No EU residency requirement now.
 4. **Smart-appliance control** – Are we integrating with IoT devices (smart ovens, etc.) in v1.0? **✔ No,** not in initial scope. Focus on core functionality; IoT can be a future enhancement.
 5. **Brand voice** – Should the assistant have a unique voice (custom TTS) or is system voice acceptable? **✔ System voices** are fine for now (consider a custom voice for brand consistency post-MVP).

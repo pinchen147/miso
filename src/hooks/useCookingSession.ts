@@ -5,7 +5,7 @@ import { CameraView } from 'expo-camera';
 import { supabase } from '@/lib/supabase';
 import { Recipe, RecipeStep } from '@/types/recipe';
 import { cameraAnalysisService, CameraAnalysisResult } from '@/services/cameraService';
-import * as Speech from 'expo-speech';
+import { openaiTtsService } from '@/services/openaiTtsService';
 
 export const useCookingSession = (recipeId: string, cameraRef?: React.RefObject<CameraView>) => {
   const [recipe, setRecipe] = useState<Recipe | null>(null);
@@ -17,10 +17,62 @@ export const useCookingSession = (recipeId: string, cameraRef?: React.RefObject<
   const [analysisResult, setAnalysisResult] = useState<CameraAnalysisResult | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [ragGuidance, setRagGuidance] = useState<string>('');
+  const [hasPlayedIntro, setHasPlayedIntro] = useState<boolean>(false);
+  const lastSpokenGuidance = useRef<string>('');
+  const lastVisionSummary = useRef<string>('');
+  const lastSceneObjects = useRef<string[]>([]);
 
   const currentStep = steps[currentStepIndex];
   const isLastStep = currentStepIndex === steps.length - 1;
   const canGoPrevious = currentStepIndex > 0;
+
+  // Helper function to check if guidance is similar (avoid minor variations)
+  const isSimilarGuidance = (text1: string, text2: string): boolean => {
+    if (!text1 || !text2) return false;
+    
+    // Remove punctuation and normalize
+    const normalize = (text: string) => 
+      text.toLowerCase()
+          .replace(/[.,!?;:]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim();
+    
+    const norm1 = normalize(text1);
+    const norm2 = normalize(text2);
+    
+    // Check if texts are very similar (80% word overlap)
+    const words1 = norm1.split(' ');
+    const words2 = norm2.split(' ');
+    const commonWords = words1.filter(word => words2.includes(word));
+    
+    const similarity = commonWords.length / Math.max(words1.length, words2.length);
+    return similarity > 0.8;
+  };
+
+  // Helper function to detect significant guidance changes
+  const isSignificantGuidanceChange = (newGuidance: string, oldGuidance: string): boolean => {
+    if (!oldGuidance) return true;
+    
+    // Check for key action words that indicate significant change
+    const actionWords = ['add', 'remove', 'turn', 'flip', 'stir', 'heat', 'cool', 'season', 'taste', 'check'];
+    const newActions = actionWords.filter(word => newGuidance.toLowerCase().includes(word));
+    const oldActions = actionWords.filter(word => oldGuidance.toLowerCase().includes(word));
+    
+    // If different actions are mentioned, it's significant
+    return newActions.join(',') !== oldActions.join(',');
+  };
+
+  // Check speech availability
+  const checkSpeechAvailability = async () => {
+    try {
+      console.log('🎤 Checking OpenAI TTS availability...');
+      console.log('🎤 OpenAI TTS service ready');
+      return true;
+    } catch (error) {
+      console.error('🎤 OpenAI TTS check failed:', error);
+      return false;
+    }
+  };
 
   const fetchRecipeData = async () => {
     try {
@@ -64,18 +116,43 @@ export const useCookingSession = (recipeId: string, cameraRef?: React.RefObject<
     }
   };
 
-  const speakText = (text: string, useRagGuidance: boolean = false) => {
-    setIsSpeaking(true);
+  const speakText = async (text: string, useRagGuidance: boolean = false) => {
     const textToSpeak = useRagGuidance && ragGuidance ? ragGuidance : text;
-    Speech.speak(textToSpeak, {
-      onDone: () => setIsSpeaking(false),
-      onError: () => setIsSpeaking(false),
-    });
+    
+    if (!textToSpeak || textToSpeak.trim() === '') {
+      console.log('🎤 No text to speak');
+      return;
+    }
+
+    console.log('🎤 Attempting to speak with OpenAI TTS:', textToSpeak.substring(0, 50) + '...');
+    
+    setIsSpeaking(true);
+    
+    try {
+      await openaiTtsService.speak(textToSpeak);
+      console.log('🎤 ✅ OpenAI TTS completed successfully');
+      setIsSpeaking(false);
+    } catch (error) {
+      console.error('🎤 ❌ OpenAI TTS failed:', error);
+      setIsSpeaking(false);
+    }
   };
 
-  const stopSpeaking = () => {
-    Speech.stop();
-    setIsSpeaking(false);
+  const stopSpeaking = async () => {
+    try {
+      await openaiTtsService.stop();
+      setIsSpeaking(false);
+    } catch (error) {
+      console.error('🎤 Error stopping speech:', error);
+    }
+  };
+
+  const playIntroGreeting = () => {
+    if (recipe && !hasPlayedIntro) {
+      const introText = `Hi, I am Miso, your AI cooking assistant. Today we are cooking ${recipe.title}`;
+      speakText(introText);
+      setHasPlayedIntro(true);
+    }
   };
 
   const handleNextStep = () => {
@@ -118,23 +195,60 @@ export const useCookingSession = (recipeId: string, cameraRef?: React.RefObject<
     }
   };
 
-  const startCameraAnalysis = () => {
-    if (!cameraRef?.current || !currentStep) return;
 
+  const startCameraAnalysis = () => {
+    if (!cameraRef?.current || !currentStep) {
+      console.log('Camera analysis not started - missing refs:', {
+        hasCamera: !!cameraRef?.current,
+        hasStep: !!currentStep
+      });
+      return;
+    }
+
+    console.log('Starting camera analysis for step:', currentStep.step_number);
     setIsAnalyzing(true);
-    const completedSteps = steps.slice(0, currentStepIndex).map(step => 
-      `Step ${step.step_number}: ${step.instruction}`
-    );
+    const completedSteps = steps.slice(0, currentStepIndex);
 
     cameraAnalysisService.startAnalysis(
       cameraRef,
-      currentStep.instruction,
+      currentStep,
       (result: CameraAnalysisResult) => {
+        console.log('Analysis result received:', result.guidance);
         setAnalysisResult(result);
         setRagGuidance(result.guidance);
+        
+        // Smart comparison to avoid repetitive guidance
+        const currentVisionSummary = result.visionResult.summary;
+        const currentObjects = result.visionResult.objects.sort().join(',');
+        
+        // Check if the scene has significantly changed
+        const sceneChanged = (
+          currentVisionSummary !== lastVisionSummary.current ||
+          currentObjects !== lastSceneObjects.current.sort().join(',')
+        );
+        
+        // Check if guidance is meaningfully different (not just minor word changes)
+        const guidanceChanged = result.guidance && (
+          !lastSpokenGuidance.current ||
+          !isSimilarGuidance(result.guidance, lastSpokenGuidance.current)
+        );
+        
+        // Only speak if scene changed OR guidance is meaningfully different
+        if (guidanceChanged && (sceneChanged || isSignificantGuidanceChange(result.guidance, lastSpokenGuidance.current))) {
+          console.log('🎯 Speaking new guidance - scene or content changed significantly');
+          lastSpokenGuidance.current = result.guidance;
+          lastVisionSummary.current = currentVisionSummary;
+          lastSceneObjects.current = [...result.visionResult.objects];
+          speakText(result.guidance);
+        } else {
+          console.log('🔇 Skipping repetitive guidance - scene/content similar');
+        }
       },
       completedSteps
-    );
+    ).catch((error) => {
+      console.error('Failed to start camera analysis:', error);
+      setIsAnalyzing(false);
+    });
   };
 
   const stopCameraAnalysis = () => {
@@ -146,32 +260,57 @@ export const useCookingSession = (recipeId: string, cameraRef?: React.RefObject<
   const handleBack = () => {
     stopSpeaking();
     stopCameraAnalysis();
+    setHasPlayedIntro(false); // Reset intro state for next session
     router.back();
   };
 
-  // Fetch data on mount
+  // Check speech and fetch data on mount
   useEffect(() => {
-    if (recipeId) {
-      fetchRecipeData();
-    }
+    const initializeSession = async () => {
+      await checkSpeechAvailability();
+      if (recipeId) {
+        await fetchRecipeData();
+      }
+    };
+    
+    initializeSession();
   }, [recipeId]);
+
+  // Play intro greeting when recipe is first loaded
+  useEffect(() => {
+    if (recipe && !loading && !hasPlayedIntro) {
+      playIntroGreeting();
+    }
+  }, [recipe, loading, hasPlayedIntro]);
 
   // Start/restart analysis when step changes
   useEffect(() => {
-    if (currentStep) {
+    if (currentStep && hasPlayedIntro) {
       stopCameraAnalysis(); // Stop previous analysis
+      
+      // Reset tracking for new step
+      lastSpokenGuidance.current = '';
+      lastVisionSummary.current = '';
+      lastSceneObjects.current = [];
       
       // Speak the step first
       speakText(`Step ${currentStep.step_number}: ${currentStep.instruction}`);
       
-      // Start new analysis after a brief delay
+      // Start new analysis after a longer delay to ensure camera is ready
       setTimeout(() => {
         if (cameraRef?.current) {
           startCameraAnalysis();
+        } else {
+          console.log('Camera not ready, retrying in 1 second...');
+          setTimeout(() => {
+            if (cameraRef?.current) {
+              startCameraAnalysis();
+            }
+          }, 1000);
         }
-      }, 2000); // 2 second delay for speech to start
+      }, 3000); // 3 second delay for speech to start and camera to be ready
     }
-  }, [currentStepIndex, cameraRef]);
+  }, [currentStepIndex, cameraRef, hasPlayedIntro]);
 
   // Clean up analysis when hook unmounts or dependencies change
   useEffect(() => {

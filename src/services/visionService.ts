@@ -1,13 +1,7 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
-import Constants from 'expo-constants';
-
-const GEMINI_API_KEY = Constants.expoConfig?.extra?.geminiApiKey || process.env.EXPO_PUBLIC_GEMINI_API_KEY;
-
-if (!GEMINI_API_KEY) {
-  throw new Error('Gemini API key not found in environment variables');
-}
-
-const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+import { geminiService, VisionAnalysisResult as GeminiVisionResult } from '@/lib/gemini';
+import { Recipe } from '@/types/recipe';
+import { VISION_PROMPT, getSubstitutionPrompt } from '@/prompts';
+import { visionCache, createCacheKey } from '@/utils/cache';
 
 export interface VisionAnalysisResult {
   objects: string[];
@@ -20,58 +14,45 @@ export interface VisionAnalysisResult {
 }
 
 export class VisionService {
-  private model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
   async analyzeFrame(base64Image: string): Promise<VisionAnalysisResult> {
+    // Create cache key from image hash (simplified)
+    const imageHash = base64Image.substring(0, 20);
+    const cacheKey = createCacheKey('vision', imageHash);
+    
+    // Check cache first
+    const cached = visionCache.get(cacheKey);
+    if (cached) {
+      console.log('Vision analysis cache hit');
+      return cached;
+    }
+
     try {
-      const prompt = `
-        Analyze this cooking scene image and identify:
-        1. Visible objects (pans, bowls, cutting boards, etc.)
-        2. Current cooking actions (chopping, stirring, heating, etc.)
-        3. Cooking tools and equipment
-        4. Visible ingredients
-        5. Current cooking state (preparing, cooking, plating, unknown)
-        6. Your confidence level (0-1)
-        
-        Respond in JSON format:
-        {
-          "objects": ["list of visible objects"],
-          "actions": ["list of current actions"],
-          "cookingTools": ["list of cooking tools"],
-          "ingredients": ["list of visible ingredients"],
-          "cookingState": "preparing|cooking|plating|unknown",
-          "confidence": 0.85,
-          "summary": "Brief description of what's happening in the scene"
-        }
-        
-        Be specific but concise. Focus on cooking-relevant details.
-      `;
-
-      const result = await this.model.generateContent([
-        prompt,
-        {
-          inlineData: {
-            data: base64Image,
-            mimeType: 'image/jpeg',
-          },
-        },
-      ]);
-
-      const response = await result.response;
-      const text = response.text();
+      // Use gemini service for vision analysis
+      const result = await geminiService.analyzeFrame(base64Image);
       
-      // Parse JSON response
-      const parsed = JSON.parse(text.replace(/```json\n?|```\n?/g, ''));
-      
-      return {
-        objects: parsed.objects || [],
-        actions: parsed.actions || [],
-        cookingTools: parsed.cookingTools || [],
-        ingredients: parsed.ingredients || [],
-        cookingState: parsed.cookingState || 'unknown',
-        confidence: parsed.confidence || 0.5,
-        summary: parsed.summary || 'Unable to analyze scene',
+      // Convert to our interface format
+      const analysisResult: VisionAnalysisResult = {
+        objects: result.objects,
+        actions: result.actions,
+        cookingTools: result.objects.filter(obj => 
+          ['pan', 'pot', 'knife', 'spoon', 'spatula', 'bowl', 'plate'].some(tool => 
+            obj.toLowerCase().includes(tool)
+          )
+        ),
+        ingredients: result.objects.filter(obj => 
+          ['onion', 'garlic', 'tomato', 'pepper', 'meat', 'fish', 'vegetable'].some(ingredient => 
+            obj.toLowerCase().includes(ingredient)
+          )
+        ),
+        cookingState: this.determineCookingState(result.actions),
+        confidence: result.confidence,
+        summary: result.summary,
       };
+
+      // Cache the result
+      visionCache.set(cacheKey, analysisResult);
+      
+      return analysisResult;
     } catch (error) {
       console.error('Vision analysis error:', error);
       
@@ -88,45 +69,34 @@ export class VisionService {
     }
   }
 
-  async generateStepGuidance(
-    visionResult: VisionAnalysisResult,
-    currentStep: string,
-    relevantContext: string[]
-  ): Promise<string> {
+  private determineCookingState(actions: string[]): 'preparing' | 'cooking' | 'plating' | 'unknown' {
+    const actionString = actions.join(' ').toLowerCase();
+    
+    if (actionString.includes('chop') || actionString.includes('prep') || actionString.includes('wash')) {
+      return 'preparing';
+    }
+    if (actionString.includes('cook') || actionString.includes('fry') || actionString.includes('boil') || actionString.includes('sauté')) {
+      return 'cooking';
+    }
+    if (actionString.includes('plate') || actionString.includes('serve')) {
+      return 'plating';
+    }
+    
+    return 'unknown';
+  }
+
+  async generateRecipeIntro(recipe: Recipe, detectedTools: string[]): Promise<string> {
+    const requiredTools = recipe.required_cookware || [];
+    const missingTools = requiredTools.filter(tool => !detectedTools.includes(tool));
+
     try {
-      const prompt = `
-        You are an AI cooking assistant. Based on the current cooking scene and recipe step, provide helpful guidance.
-
-        Current Step: "${currentStep}"
-        
-        Scene Analysis:
-        - Objects visible: ${visionResult.objects.join(', ')}
-        - Current actions: ${visionResult.actions.join(', ')}
-        - Cooking tools: ${visionResult.cookingTools.join(', ')}
-        - Ingredients visible: ${visionResult.ingredients.join(', ')}
-        - Cooking state: ${visionResult.cookingState}
-        - Scene summary: ${visionResult.summary}
-        
-        Relevant Context from Recipe Database:
-        ${relevantContext.join('\n')}
-        
-        Provide:
-        1. Assessment of current progress
-        2. Next action needed
-        3. Tips or warnings if applicable
-        4. Encouragement
-        
-        Keep response conversational, helpful, and under 100 words.
-        Speak directly to the cook using "you" language.
-      `;
-
-      const result = await this.model.generateContent(prompt);
-      const response = await result.response;
+      const prompt = getSubstitutionPrompt(recipe.title, detectedTools, requiredTools, missingTools);
+      const result = await geminiService.chat(prompt);
       
-      return response.text();
+      return result.text;
     } catch (error) {
-      console.error('Step guidance generation error:', error);
-      return `Continue with: ${currentStep}`;
+      console.error('Recipe intro generation error:', error);
+      return `Welcome to the "${recipe.title}" recipe! Let's get started.`;
     }
   }
 }

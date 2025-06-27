@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "esnext",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "strict": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./src/*"]
+    },
+    "outDir": "./dist/scripts",
+    "skipLibCheck": true
+  },
+  "include": ["scripts/**/*.ts"],
+  "exclude": ["node_modules"]
+}

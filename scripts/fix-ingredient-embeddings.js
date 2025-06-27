@@ -33,7 +33,7 @@ async function fixIngredientEmbeddings() {
   // Fetch all ingredients
   const { data: allIngredients, error } = await supabase
     .from('ingredients')
-    .select('id, name, properties, embedding');
+    .select('id, name, embedding');
 
   if (error) {
     console.error('Error fetching ingredients:', error);
@@ -54,11 +54,7 @@ async function fixIngredientEmbeddings() {
     try {
       // Create rich text for ingredient
       let ingredientText = ingredient.name;
-      
-      if (ingredient.properties && Array.isArray(ingredient.properties)) {
-        const properties = ingredient.properties.join(', ');
-        ingredientText += ` • Properties: ${properties}`;
-      }
+
 
       console.log(`Generating embedding for: ${ingredientText}`);
       const embedding = await generateEmbedding(ingredientText);

@@ -1,5 +1,5 @@
 import React, { useState, useRef, RefObject } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View, StyleSheet, TouchableOpacity, Text } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import { CameraView, CameraType, useCameraPermissions } from 'expo-camera';
 import { useCookingSession } from '@/hooks/useCookingSession';
@@ -85,14 +85,13 @@ export default function CookingScreen() {
         style={styles.camera} 
         facing={facing}
         ref={cameraRef}
-      >
-        <CameraHeader
-          onBack={handleBack}
-          title={recipe.title}
-          currentStep={currentStepIndex + 1}
-          totalSteps={steps.length}
-        />
-      </CameraView>
+      />
+      <CameraHeader
+        onBack={handleBack}
+        title={recipe.title}
+        currentStep={currentStepIndex + 1}
+        totalSteps={steps.length}
+      />
     </View>
   );
 }
