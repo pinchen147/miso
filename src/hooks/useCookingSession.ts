@@ -26,41 +26,7 @@ export const useCookingSession = (recipeId: string, cameraRef?: React.RefObject<
   const isLastStep = currentStepIndex === steps.length - 1;
   const canGoPrevious = currentStepIndex > 0;
 
-  // Helper function to check if guidance is similar (avoid minor variations)
-  const isSimilarGuidance = (text1: string, text2: string): boolean => {
-    if (!text1 || !text2) return false;
-    
-    // Remove punctuation and normalize
-    const normalize = (text: string) => 
-      text.toLowerCase()
-          .replace(/[.,!?;:]/g, '')
-          .replace(/\s+/g, ' ')
-          .trim();
-    
-    const norm1 = normalize(text1);
-    const norm2 = normalize(text2);
-    
-    // Check if texts are very similar (80% word overlap)
-    const words1 = norm1.split(' ');
-    const words2 = norm2.split(' ');
-    const commonWords = words1.filter(word => words2.includes(word));
-    
-    const similarity = commonWords.length / Math.max(words1.length, words2.length);
-    return similarity > 0.8;
-  };
-
-  // Helper function to detect significant guidance changes
-  const isSignificantGuidanceChange = (newGuidance: string, oldGuidance: string): boolean => {
-    if (!oldGuidance) return true;
-    
-    // Check for key action words that indicate significant change
-    const actionWords = ['add', 'remove', 'turn', 'flip', 'stir', 'heat', 'cool', 'season', 'taste', 'check'];
-    const newActions = actionWords.filter(word => newGuidance.toLowerCase().includes(word));
-    const oldActions = actionWords.filter(word => oldGuidance.toLowerCase().includes(word));
-    
-    // If different actions are mentioned, it's significant
-    return newActions.join(',') !== oldActions.join(',');
-  };
+  // Helper functions moved below to avoid duplication
 
   // Check speech availability
   const checkSpeechAvailability = async () => {
@@ -116,26 +82,66 @@ export const useCookingSession = (recipeId: string, cameraRef?: React.RefObject<
     }
   };
 
-  const speakText = async (text: string, useRagGuidance: boolean = false) => {
-    const textToSpeak = useRagGuidance && ragGuidance ? ragGuidance : text;
+  // Helper functions to prevent repetitive guidance
+  const isSimilarGuidance = (newGuidance: string, lastGuidance: string): boolean => {
+    if (!newGuidance || !lastGuidance) return false;
     
-    if (!textToSpeak || textToSpeak.trim() === '') {
-      console.log('🎤 No text to speak');
-      return;
-    }
+    // Remove punctuation and normalize spacing
+    const normalize = (text: string) => text.toLowerCase()
+      .replace(/[^\w\s]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    
+    const normalizedNew = normalize(newGuidance);
+    const normalizedLast = normalize(lastGuidance);
+    
+    // Check if they're exactly the same
+    if (normalizedNew === normalizedLast) return true;
+    
+    // Check if one is contained in the other (similar meaning)
+    const shortLen = Math.min(normalizedNew.length, normalizedLast.length);
+    if (shortLen < 10) return normalizedNew === normalizedLast;
+    
+    // Calculate similarity ratio
+    const longer = normalizedNew.length > normalizedLast.length ? normalizedNew : normalizedLast;
+    const shorter = normalizedNew.length <= normalizedLast.length ? normalizedNew : normalizedLast;
+    
+    return longer.includes(shorter) || calculateSimilarity(normalizedNew, normalizedLast) > 0.8;
+  };
 
-    console.log('🎤 Attempting to speak with OpenAI TTS:', textToSpeak.substring(0, 50) + '...');
+  const calculateSimilarity = (str1: string, str2: string): number => {
+    const len1 = str1.length;
+    const len2 = str2.length;
+    const matrix = Array(len2 + 1).fill(null).map(() => Array(len1 + 1).fill(null));
     
-    setIsSpeaking(true);
+    for (let i = 0; i <= len1; i++) matrix[0][i] = i;
+    for (let j = 0; j <= len2; j++) matrix[j][0] = j;
     
-    try {
-      await openaiTtsService.speak(textToSpeak);
-      console.log('🎤 ✅ OpenAI TTS completed successfully');
-      setIsSpeaking(false);
-    } catch (error) {
-      console.error('🎤 ❌ OpenAI TTS failed:', error);
-      setIsSpeaking(false);
+    for (let j = 1; j <= len2; j++) {
+      for (let i = 1; i <= len1; i++) {
+        const cost = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[j][i] = Math.min(
+          matrix[j][i - 1] + 1,     // insertion
+          matrix[j - 1][i] + 1,     // deletion
+          matrix[j - 1][i - 1] + cost // substitution
+        );
+      }
     }
+    
+    const maxLen = Math.max(len1, len2);
+    return maxLen === 0 ? 1 : (maxLen - matrix[len2][len1]) / maxLen;
+  };
+
+  const isSignificantGuidanceChange = (newGuidance: string, lastGuidance: string): boolean => {
+    if (!lastGuidance) return true;
+    
+    // Check for key action words that indicate new instruction
+    const actionWords = ['chop', 'cut', 'mix', 'stir', 'add', 'remove', 'heat', 'cool', 'flip', 'turn', 'season'];
+    const newActions = actionWords.filter(word => newGuidance.toLowerCase().includes(word));
+    const lastActions = actionWords.filter(word => lastGuidance.toLowerCase().includes(word));
+    
+    // If different actions are mentioned, it's significant
+    return newActions.join(',') !== lastActions.join(',');
   };
 
   const stopSpeaking = async () => {
@@ -149,7 +155,7 @@ export const useCookingSession = (recipeId: string, cameraRef?: React.RefObject<
 
   const playIntroGreeting = () => {
     if (recipe && !hasPlayedIntro) {
-      const introText = `Hi, I am Miso, your AI cooking assistant. Today we are cooking ${recipe.title}`;
+      const introText = `I'm Miso. Today we're making ${recipe.title}. Try not to burn anything.`;
       speakText(introText);
       setHasPlayedIntro(true);
     }
@@ -264,9 +270,15 @@ export const useCookingSession = (recipeId: string, cameraRef?: React.RefObject<
     router.back();
   };
 
+  const [isTtsReady, setIsTtsReady] = useState(false);
+
+  // ... (rest of the state declarations)
+
   // Check speech and fetch data on mount
   useEffect(() => {
     const initializeSession = async () => {
+      await openaiTtsService.initialize();
+      setIsTtsReady(true); // Set TTS ready state
       await checkSpeechAvailability();
       if (recipeId) {
         await fetchRecipeData();
@@ -275,6 +287,39 @@ export const useCookingSession = (recipeId: string, cameraRef?: React.RefObject<
     
     initializeSession();
   }, [recipeId]);
+
+  const speakText = async (text: string, useRagGuidance: boolean = false) => {
+    if (!isTtsReady) {
+      console.log('🎤 TTS not ready, skipping speech');
+      return;
+    }
+
+    // Prevent interrupting current speech
+    if (isSpeaking) {
+      console.log('🎤 Already speaking, skipping new speech request');
+      return;
+    }
+
+    const textToSpeak = useRagGuidance && ragGuidance ? ragGuidance : text;
+    
+    if (!textToSpeak || textToSpeak.trim() === '') {
+      console.log('🎤 No text to speak');
+      return;
+    }
+
+    console.log('🎤 Attempting to speak:', textToSpeak.substring(0, 50) + '...');
+    
+    setIsSpeaking(true);
+    
+    try {
+      await openaiTtsService.speak(textToSpeak);
+      console.log('🎤 ✅ TTS completed successfully');
+      setIsSpeaking(false);
+    } catch (error) {
+      console.error('🎤 ❌ TTS failed:', error);
+      setIsSpeaking(false);
+    }
+  };
 
   // Play intro greeting when recipe is first loaded
   useEffect(() => {

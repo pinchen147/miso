@@ -44,12 +44,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
         cameraPermission: 'Allow Miso AI to access your camera to analyze cooking ingredients.'
       }
     ],
-    [
-      'expo-av',
-      {
-        microphonePermission: 'Allow Miso AI to access your microphone for voice commands and wake-word detection.'
-      }
-    ],
+    'expo-audio',
     'expo-router'
   ],
   extra: {

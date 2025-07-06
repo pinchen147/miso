@@ -30,21 +30,13 @@ export class VisionService {
       // Use gemini service for vision analysis
       const result = await geminiService.analyzeFrame(base64Image);
       
-      // Convert to our interface format
+      // Convert cooking state to our expected format
       const analysisResult: VisionAnalysisResult = {
         objects: result.objects,
         actions: result.actions,
-        cookingTools: result.objects.filter(obj => 
-          ['pan', 'pot', 'knife', 'spoon', 'spatula', 'bowl', 'plate'].some(tool => 
-            obj.toLowerCase().includes(tool)
-          )
-        ),
-        ingredients: result.objects.filter(obj => 
-          ['onion', 'garlic', 'tomato', 'pepper', 'meat', 'fish', 'vegetable'].some(ingredient => 
-            obj.toLowerCase().includes(ingredient)
-          )
-        ),
-        cookingState: this.determineCookingState(result.actions),
+        cookingTools: result.cookingTools,
+        ingredients: result.ingredients,
+        cookingState: this.mapCookingState(result.cookingState),
         confidence: result.confidence,
         summary: result.summary,
       };
@@ -69,20 +61,21 @@ export class VisionService {
     }
   }
 
-  private determineCookingState(actions: string[]): 'preparing' | 'cooking' | 'plating' | 'unknown' {
-    const actionString = actions.join(' ').toLowerCase();
-    
-    if (actionString.includes('chop') || actionString.includes('prep') || actionString.includes('wash')) {
-      return 'preparing';
+  private mapCookingState(geminiState: string): 'preparing' | 'cooking' | 'plating' | 'unknown' {
+    // Map Gemini's cooking states to our expected format
+    switch (geminiState.toLowerCase()) {
+      case 'preparing':
+        return 'preparing';
+      case 'cooking':
+        return 'cooking';
+      case 'plating':
+        return 'plating';
+      case 'not_cooking':
+      case 'idle':
+      case 'unknown':
+      default:
+        return 'unknown';
     }
-    if (actionString.includes('cook') || actionString.includes('fry') || actionString.includes('boil') || actionString.includes('sauté')) {
-      return 'cooking';
-    }
-    if (actionString.includes('plate') || actionString.includes('serve')) {
-      return 'plating';
-    }
-    
-    return 'unknown';
   }
 
   async generateRecipeIntro(recipe: Recipe, detectedTools: string[]): Promise<string> {

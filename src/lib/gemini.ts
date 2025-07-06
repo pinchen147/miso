@@ -1,6 +1,6 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import Constants from 'expo-constants';
-import { VISION_ANALYSIS_PROMPT, getGuidancePrompt } from '@/prompts';
+import { VISION_PROMPT, getGuidancePrompt } from '@/prompts';
 
 const apiKey = Constants.expoConfig?.extra?.geminiApiKey;
 
@@ -16,7 +16,9 @@ const genAI = new GoogleGenerativeAI(apiKey);
 export interface VisionAnalysisResult {
   objects: string[];
   actions: string[];
-  issues: string[];
+  cookingTools: string[];
+  ingredients: string[];
+  cookingState: string;
   confidence: number;
   summary: string;
 }
@@ -27,12 +29,14 @@ export interface ChatResponse {
 }
 
 export class GeminiService {
-  private model = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' });
+  private visionModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' }); // Fast model for vision analysis
+  private chatModel = genAI.getGenerativeModel({ model: 'gemini-1.5-pro' }); // More capable model for text generation
 
   async analyzeFrame(base64Image: string): Promise<VisionAnalysisResult> {
     try {
-      const result = await this.model.generateContent([
-        VISION_ANALYSIS_PROMPT,
+      console.log('🤖 Using Gemini 2.5 Flash for vision analysis');
+      const result = await this.visionModel.generateContent([
+        VISION_PROMPT,
         {
           inlineData: {
             data: base64Image,
@@ -61,7 +65,9 @@ export class GeminiService {
         return {
           objects: parsed.objects || [],
           actions: parsed.actions || [],
-          issues: parsed.issues || [],
+          cookingTools: parsed.cookingTools || [],
+          ingredients: parsed.ingredients || [],
+          cookingState: parsed.cookingState || 'unknown',
           confidence: parsed.confidence || 0.8,
           summary: parsed.summary || 'Cooking scene analysis'
         };
@@ -73,7 +79,9 @@ export class GeminiService {
         return {
           objects: [],
           actions: [],
-          issues: [],
+          cookingTools: [],
+          ingredients: [],
+          cookingState: 'unknown',
           confidence: 0.3,
           summary: text.substring(0, 150) || 'Unable to analyze scene'
         };
@@ -87,9 +95,9 @@ export class GeminiService {
   async chat(prompt: string, retries: number = 2): Promise<ChatResponse> {
     for (let attempt = 1; attempt <= retries + 1; attempt++) {
       try {
-        console.log(`🤖 Gemini chat attempt ${attempt}/${retries + 1}`);
+        console.log(`🤖 Gemini chat attempt ${attempt}/${retries + 1} using 1.5 Pro`);
         
-        const result = await this.model.generateContent(prompt);
+        const result = await this.chatModel.generateContent(prompt);
         const text = result.response.text();
         
         console.log('🤖 ✅ Gemini chat successful');
