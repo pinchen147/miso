@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Miso AI - iOS Cooking Assistant
 
 **Miso AI** transforms your iPhone into an intelligent cooking companion that guides you through recipes with hands-free voice commands, real-time camera analysis, and step-by-step audio instructions. Using advanced AI vision and natural language processing, Miso acts as your personal sous-chef, helping you cook with confidence whether you're a beginner or an experienced home cook. The app features a warm, kitchen-friendly interface designed for messy hands and busy cooking sessions.
@@ -139,3 +140,6 @@ Colors and styling are centralized in each component's StyleSheet. Main theme co
 ## License
 
 This project is part of the Miso AI cooking assistant application.
+=======
+# miso
+>>>>>>> 32966bc134cb575e1583d8aac779f8a43e1eab56
