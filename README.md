@@ -75,6 +75,7 @@ miso-ai/
 │   │   ├── gemini.ts         # Gemini AI vision & chat
 │   │   ├── supabase.ts       # Recipe database & RAG queries
 │   │   ├── openai.ts         # Text embeddings
+│   │   ├── openaiTtsService.ts # OpenAI TTS with Ballad voice
 │   │   └── voice/            # Voice I/O services
 │   │       ├── wakeWord.ts   # "Chef" wake word detection
 │   │       ├── sttStream.ts  # Speech-to-text
@@ -104,7 +105,7 @@ miso-ai/
 ##### Voice Interaction
 - Wake-word activation ("Chef") using Picovoice Porcupine
 - Natural language understanding for questions and commands
-- Continuous audio instructions via text-to-speech
+- High-quality audio instructions via OpenAI TTS (gpt-4o-mini-tts with Ballad voice)
 - Hands-free control throughout cooking
 
 ##### Recipe Management
@@ -126,10 +127,10 @@ miso-ai/
    cp .env.example .env
    
    # Add your API keys:
-   # GEMINI_API_KEY=your_key_here
-   # SUPABASE_URL=your_url_here
-   # SUPABASE_ANON_KEY=your_key_here
-   # OPENAI_API_KEY=your_key_here
+   # EXPO_PUBLIC_GEMINI_API_KEY=your_key_here
+   # EXPO_PUBLIC_SUPABASE_URL=your_url_here
+   # EXPO_PUBLIC_SUPABASE_ANON_KEY=your_key_here
+   # EXPO_PUBLIC_OPENAI_API_KEY=your_key_here
    ```
 
 3. **Development Commands**:
@@ -202,7 +203,7 @@ Serves as the primary database and vector store:
 
 - **Picovoice Porcupine**: On-device wake word detection
 - **Google Cloud Speech-to-Text**: Streaming transcription for commands
-- **Expo Speech (TTS)**: System voices for audio instructions
+- **OpenAI Text-to-Speech**: High-quality voice synthesis using gpt-4o-mini-tts model with Ballad voice for natural cooking guidance
 
 ### 4. RAG (Retrieval-Augmented Generation)
 
