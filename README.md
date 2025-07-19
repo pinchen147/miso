@@ -1,300 +1,265 @@
-# Yijiu AI Business Advisor
+# Miso AI - Real-Time Multimodal Cooking Assistant
 
-This document outlines the engineering approach for building Yijiu's AI-powered business advisory system. The system analyzes small business profiles (e.g., noodle shops, BBQ restaurants, liquor stores, convenience stores, tutoring centers) and generates detailed improvement recommendations based on Yijiu's proprietary business consulting knowledge.
+This document outlines the engineering approach for building Miso AI, an iOS-first intelligent cooking assistant that uses real-time computer vision, voice interaction, and AI to provide hands-free, adaptive cooking guidance. The system watches your cooking through the camera, listens to your questions, and adapts recipes based on available ingredients and cookware.
 
 The system consists of three main components:
-- **Frontend**: React web application for business profile input and report visualization
-- **Backend**: FastAPI server integrating LLM technology with Yijiu's business expertise
-- **Docs**: Documentation of feature specs
+- **Frontend**: React Native (Expo) iOS application with camera vision and voice interface
+- **Backend**: Cloud AI services (Gemini 2.5 Pro) and Supabase for recipe storage and RAG
+- **Docs**: Product design and engineering feature documentation
 
 Key Features:
-- Business type-specific analysis and recommendations
-- Integration of Yijiu's proprietary consulting frameworks
-- Customized deep-dive reports focusing on core specific business's challenges
+- Real-time ingredient and cookware recognition at ~1 FPS
+- Step-by-step audio guidance with AR overlays
+- Dynamic recipe adaptation for missing ingredients or equipment
+- Hands-free voice control with wake-word detection
+- Built-in recipe library and user recipe import
 
 ---
 
 ## Structure
-- `/frontend` - Frontend application
-- `/backend` - Backend services
+- `/app` - Expo Router screens and navigation
+- `/src` - Core application logic and services
 - `/docs` - Project documentation
+- `/assets` - Fonts, images, and static resources
 
 ### **0. Quick Start**
 
-To start all services (Database, Backend Server, and Frontend):
+To start the development server:
 ```bash
-chmod +x start.sh  # Only needed first time
-./start.sh
+# Install dependencies
+npm install
+
+# Start Expo development server
+npm start
+
+# Run on iOS Simulator
+npm run ios
 ```
 
 This will start:
-- MongoDB database on port 27017
-- FastAPI backend on port 8000
-- React frontend on port 3000
+- Expo development server
+- iOS Simulator with hot reload enabled
+- TypeScript compilation in watch mode
 
-
-### **1. Frontend - React Web Application**
+### **1. Frontend - React Native + Expo Application**
 
 #### 1.1 **Overview**
-The frontend is a modern React application that provides an intuitive interface for business owners to interact with the AI advisor. It features a chat-based interface with conversation history management, business case templates.
+The frontend is a React Native application built with Expo that provides an immersive cooking experience. It features real-time camera analysis, voice interaction, AR overlays for ingredient highlighting, and adaptive recipe guidance based on available tools and ingredients.
 
 #### 1.2 **Technology Stack**
-- **React**: Core UI library
-- **Webpack**: Module bundling
-- **Babel**: JavaScript transpilation
-- **CSS Modules**: Component-scoped styling
-- **Axios**: API communication
+- **React Native 0.79.4**: Cross-platform mobile framework
+- **Expo SDK ~53.0**: Managed workflow for rapid development
+- **TypeScript**: Type safety and better developer experience
+- **Expo Router**: File-based navigation
+- **React Native Vision Camera**: High-performance camera access
+- **Supabase Client**: Backend integration for recipes and RAG
 
 #### 1.3 **Project Structure**
 ```plaintext
-frontend/
-├── public/                  # Static assets
-│   └── index.html           # HTML entry point
+miso-ai/
+├── app/                        # Expo Router screens
+│   ├── _layout.tsx            # Root layout with fonts and global styles
+│   ├── index.tsx              # Home screen (recipe browser)
+│   └── session.tsx            # Cooking session with camera
 ├── src/
-│   ├── components/          # React components
-│   │   ├── ChatWindow.jsx   # Chat message display
-│   │   ├── ConversationList.jsx # Sidebar conversation history
-│   │   ├── Header.jsx       # Application header
-│   │   ├── MessageInput.jsx # User input component
-│   │   ├── ReportViewer.jsx # Business report display
-│   │   └── SuggestedPrompts.jsx # Business case templates
-│   ├── services/
-│   │   └── api.js           # API client for backend communication
-│   ├── styles/              # CSS styles
-│   │   ├── App.css          # Main application styles
-│   │   ├── ChatWindow.css   # Chat interface styles
-│   │   ├── Header.css       # Header styles
-│   │   ├── MessageInput.css # Input field styles
-│   │   ├── Sidebar.css      # Conversation list styles
-│   │   ├── SuggestedPrompts.module.css # Business case template styles
-│   │   ├── utils.css        # Utility classes
-│   │   └── variables.css    # CSS variables for theming
-│   ├── App.jsx              # Main application component
-│   └── index.jsx            # Application entry point
-├── .babelrc                 # Babel configuration
-├── package.json             # Dependencies and scripts
-└── webpack.config.js        # Webpack configuration
+│   ├── components/            # Reusable UI components
+│   │   └── ThemedText.tsx     # Text with consistent styling
+│   ├── features/              # Feature-specific modules
+│   │   ├── cooking-session/   # Core cooking logic
+│   │   │   ├── CameraFeed.tsx
+│   │   │   ├── SessionOverlay.tsx
+│   │   │   └── fsm/          # State machine for recipe flow
+│   │   ├── cookware-vision/   # Equipment detection
+│   │   └── recipe-browser/    # Recipe selection UI
+│   ├── services/              # External service integrations
+│   │   ├── gemini.ts         # Gemini AI vision & chat
+│   │   ├── supabase.ts       # Recipe database & RAG queries
+│   │   ├── openai.ts         # Text embeddings
+│   │   └── voice/            # Voice I/O services
+│   │       ├── wakeWord.ts   # "Chef" wake word detection
+│   │       ├── sttStream.ts  # Speech-to-text
+│   │       └── tts.ts        # Text-to-speech
+│   ├── types/                # TypeScript interfaces
+│   │   └── recipe.ts         # Recipe data structures
+│   └── data/                 # Sample data
+│       └── recipes.ts        # Built-in recipes
+├── assets/                   # Static resources
+└── app.config.ts            # Expo configuration
 ```
 
 #### 1.4 **Key Features**
 
-##### Chat Interface
-The application provides a modern chat interface where users can:
-- Send messages to the AI advisor
-- View AI-generated responses with Markdown support
-- See typing indicators when the AI is processing
+##### Real-Time Vision Analysis
+- Camera processes frames at ~1 FPS using Gemini 2.5 Pro
+- Identifies ingredients, cookware, and cooking actions
+- Provides visual feedback through AR overlays
+- Monitors cooking progress and alerts for issues
 
-##### Conversation Management
-- Save and retrieve conversation history
-- Create new conversations
-- Delete existing conversations
-- View a list of past conversations with previews
+##### Adaptive Recipe Guidance
+- Automatically adjusts instructions for missing ingredients
+- Suggests alternative cooking methods for unavailable equipment
+- Uses RAG to retrieve substitution knowledge from Supabase
+- Maintains context throughout the cooking session
 
-##### Business Case Templates
-The application offers pre-configured business case templates for common scenarios:
-- Wenzhou Noodle Restaurant facing modernization challenges
-- Zhengzhou BBQ Restaurant with operational issues
-- Baoding Art Education Center adapting to market changes
+##### Voice Interaction
+- Wake-word activation ("Chef") using Picovoice Porcupine
+- Natural language understanding for questions and commands
+- Continuous audio instructions via text-to-speech
+- Hands-free control throughout cooking
 
-Each template includes:
-- Business type and location
-- Key challenges
-- Financial metrics
-- Structured format for AI analysis
+##### Recipe Management
+- Built-in curated recipe library stored in Supabase
+- Import recipes from text or PDF
+- Semantic search across recipes using vector embeddings
+- Personalized recommendations based on available ingredients
 
-##### Responsive Design
-- Glassmorphism UI with blur effects and transparency
-- Responsive layout that works on desktop and mobile devices
-- Collapsible sidebar for conversation history
-- Dark theme with accent colors
+#### 1.5 **Running Locally**
 
-#### 1.5 **API Integration**
-The frontend communicates with the backend through a RESTful API:
-- `/chat` endpoint for sending messages and receiving responses
-- `/conversations` endpoints for managing conversation history
-- `/analyze` endpoint for detailed business case analysis
+1. **Prerequisites**:
+   - Node.js 18+ and npm
+   - Xcode 14+ with iOS Simulator
+   - Expo CLI (`npm install -g expo-cli`)
 
-#### 1.6 **Running Locally**
-
-1. **Install Dependencies**:
+2. **Environment Setup**:
    ```bash
-   cd frontend
+   # Copy environment template
+   cp .env.example .env
+   
+   # Add your API keys:
+   # GEMINI_API_KEY=your_key_here
+   # SUPABASE_URL=your_url_here
+   # SUPABASE_ANON_KEY=your_key_here
+   # OPENAI_API_KEY=your_key_here
+   ```
+
+3. **Development Commands**:
+   ```bash
+   # Install dependencies
    npm install
-   ```
-
-2. **Start Development Server**:
-   ```bash
+   
+   # Start development server
    npm start
+   
+   # Run on iOS
+   npm run ios
+   
+   # Type checking
+   npx tsc --noEmit
+   
+   # Test build
+   npx expo export --platform ios --dev
    ```
-   This will launch the application at `http://localhost:3000`
-
-3. **Build for Production**:
-   ```bash
-   npm run build
-   ```
-   This creates optimized files in the `dist` directory
 
 ---
-### **2. Backend - FastAPI Server**
-# Backend Documentation
+
+### **2. Backend - Cloud AI Services & Supabase**
 
 ## Architecture Overview
 
 ```mermaid
 graph TD
-    A[FastAPI Application<br>main.py] --> B[MongoDB Service<br>database/mongodb.py]
-    A --> C[LLM Service<br>services/llm_service.py]
-    A --> E[LLM Router<br>services/llm_routing_service.py]
-    E --> C
-    A --> R[RAG Service<br>services/rag_service.py]
-    R --> C
-    A --> V[Vector DB Service<br>services/vector_db_service.py]
-    R --> V
-    V --> G[ChromaDB<br>Vector Database]
-    
-    %% These connections are removed from main and properly shown as dependencies
-    V --> F[Document Processor<br>services/document_processor.py]
-    F --> D[Embedding Service<br>services/embedding_service.py]
-    D --> V
-    
-    subgraph Utility Scripts
-        H[Ingestion Scripts]
-        I[Testing Scripts]
-        J[Database Scripts]
+    subgraph iOS App
+        UI[React Native UI]
+        Camera[Vision Camera]
+        Voice[Voice I/O]
+        FSM[Recipe State Machine]
     end
     
-    H --> V
-    I --> C
-    I --> R
-    I --> V
-    J --> B
+    subgraph Cloud Services
+        Gemini[Gemini 2.5 Pro<br/>Vision & Chat]
+        Supabase[(Supabase<br/>Recipes + Vectors)]
+        OpenAI[OpenAI Embeddings]
+        STT[Google Speech-to-Text]
+    end
+    
+    Camera -->|1 FPS frames| Gemini
+    Voice -->|Audio stream| STT
+    FSM -->|Queries| Supabase
+    FSM -->|Context + Question| Gemini
+    UI -->|Text for embedding| OpenAI
+    OpenAI -->|Vectors| Supabase
 ```
 
-## Component Walkthrough
+## Component Overview
 
-### 1. Main Application (`main.py`)
+### 1. Gemini 2.5 Pro Integration
 
-The central FastAPI application that defines API routes and manages request handling. Key endpoints include:
+Handles both vision analysis and conversational AI:
 
-- `/conversations`: Create, retrieve, and delete conversation records
-- `/chat`: Handle chat interactions with the LLM, optionally using RAG
-- `/vector-search`: Perform semantic search on embedded documents
+- **Vision Analysis**: Processes camera frames to identify ingredients, cookware, and cooking states
+- **Chat Completions**: Generates contextual responses and adapted instructions based on RAG-retrieved knowledge
 
-### 2. Database (`database/`)
+### 2. Supabase Backend
 
-Contains MongoDB integration for storing conversation history.
+Serves as the primary database and vector store:
 
-- **mongodb.py**: Provides an asynchronous MongoDB client with methods for CRUD operations on conversations
+- **Recipe Storage**: Structured tables for recipes, ingredients, steps, and user profiles
+- **Vector Search**: Uses pgvector extension for semantic similarity queries
+- **Knowledge Base**: Stores cooking tips, substitution guides, and technique references
+- **User Profiles**: Saves preferences, equipment lists, and cooking history
 
-### 3. Models (`models/`)
+### 3. Voice Processing Pipeline
 
-Defines data structures used throughout the application.
+- **Picovoice Porcupine**: On-device wake word detection
+- **Google Cloud Speech-to-Text**: Streaming transcription for commands
+- **Expo Speech (TTS)**: System voices for audio instructions
 
-- **conversation.py**: Contains `Message` and `Conversation` Pydantic models for structured data handling
+### 4. RAG (Retrieval-Augmented Generation)
 
-### 4. Services (`services/`)
+Enhances AI responses with grounded knowledge:
 
-Core business logic of the application, divided into specialized services:
-
-- **rag_service.py**: Manages Retrieval-Augmented Generation functionality
-  - Retrieves relevant context from vector database based on user queries
-  - Formats retrieved context for LLM prompts
-  - Generates responses by combining context with user queries
-  - Extracts and organizes source information for citations
-
-- **vector_db_service.py**: Manages interactions with the vector database (ChromaDB)
-  - Provides methods to add, retrieve, and query document embeddings
-  - Handles document processing and storage
-  - Includes utilities for managing database collections and status
-  - Implements error handling for vector database operations
-
-- **embedding_service.py**: Handles text embeddings for semantic search
-  - Provides methods to encode text/queries into vector embeddings
-
-- **document_processor.py**: Processes documents for RAG
-  - Includes parsers for different document types
-  - Implements chunking strategies (Hierarchical and Sliding Window)
-  - Prepares documents for vector storage
-
-- **llm_service.py**: Interfaces with OpenAI's language models
-  - Manages API communication with different models (GPT-4o, GPT-o3-mini, etc.)
-  - Formats prompts and processes responses
-
-- **llm_routing_service.py**: Routes user queries to appropriate processing pipelines
-  - Analyzes queries to determine best handling approach
-
-### 5. Vector Database (`chroma_db/`)
-
-Stores document embeddings for semantic search capabilities. Managed primarily through the vector_db_service.py interface.
-
-### 6. Scripts (`scripts/`)
-
-Utility scripts for various operational tasks:
-
-- **ingestWebsiteToChromaDb.py**: Scrapes and indexes website content into ChromaDB
-- **ingest_restaurant_docs.py**: Processes restaurant-specific documents for RAG
-- **check_db_status.py**: Monitors and manages database status
-- **test_retrieval.py**, **test_rag.py**, **simple_rag_test.py**: Testing scripts for RAG functionality
-- **rag_to_file.py**: Utility for exporting RAG results
-
-### 7. Environment and Dependencies
-
-- **requirements.txt**: Lists all Python dependencies including:
-  - FastAPI and Uvicorn for API framework
-  - OpenAI for LLM integration
-  - ChromaDB for vector storage
-  - MongoDB tools (motor, pymongo) for database access
-  - Sentence-transformers for embedding generation
+1. User query or context → OpenAI Embeddings → Vector
+2. Vector similarity search in Supabase → Relevant passages
+3. Passages + Context → Gemini Chat → Grounded response
+4. Response includes adapted instructions or substitution suggestions
 
 ## Data Flow
 
-1. User requests come in through FastAPI endpoints in `main.py`
-2. Depending on the request type:
-   - Chat requests are processed by the LLM service
-   - If RAG is enabled, the RAG service:
-     - Retrieves relevant context via the vector DB service
-     - Formats the context with the user query
-     - Sends the combined prompt to the LLM service for response generation
-   - Conversation history is stored/retrieved from MongoDB
-3. For document ingestion:
-   - Documents are processed by the document processor
-   - Text is chunked according to strategy
-   - Chunks are embedded and stored via the vector DB service into ChromaDB
+1. **Session Start**: 
+   - User selects recipe → App fetches from Supabase
+   - Camera scans for available ingredients/tools
+   - System adapts recipe if needed using RAG
 
-## Conversational Flow: Business Case Analysis
+2. **During Cooking**:
+   - Vision: Camera → Gemini → Ingredient/action detection
+   - Voice: Wake word → STT → Command processing
+   - Questions: Query → Embedding → RAG search → Gemini → Answer
 
-The system supports multi-turn conversations for business case analysis with the following flow:
-
-1. **Business Outline Request**
-   - User asks for a business case outline with specific challenges and metrics
-   - System routes to `BUSINESS_ANALYSIS_OUTLINE_ROUTE`
-   - System generates a structured outline with analysis and recommendations
-
-2. **Report Generation Request**
-   - User asks to generate a full report based on the outline
-   - LLM router recognizes this as a follow-up to a business outline
-   - System routes to `BUSINESS_CASE_RAG_ROUTE`
-   - RAG service retrieves relevant business knowledge
-   - System generates a comprehensive report using the outline and retrieved knowledge
-
-This approach allows users to first get a structured outline and then request a detailed report, with the system maintaining context throughout the conversation.
+3. **Adaptation Logic**:
+   - Missing ingredient detected → Search substitutions → Suggest alternative
+   - Missing equipment → Retrieve alternative methods → Modify instructions
 
 ## Development Setup
 
-The project uses a virtual environment (`venv/`) for dependency isolation. Before installing packages, always check if the virtualenv is active.
+Currently, the backend services are cloud-based and accessed via API keys. Local development uses the same cloud services with rate limiting for cost control.
 
-To install dependencies:
-```bash
-# Activate virtual environment
-source venv/bin/activate  # On Unix/macOS
-# or
-.\venv\Scripts\activate  # On Windows
+### API Endpoints (via Supabase)
 
-# Install requirements
-pip install -r requirements.txt
-```
+- Recipe CRUD operations
+- Vector similarity search
+- User profile management
+- Session history storage
 
-4. **API Documentation**:
-   FastAPI automatically generates interactive API documentation:
-   - Swagger UI: `http://localhost:8000/docs`
-   - ReDoc: `http://localhost:8000/redoc`
+---
+
+## Key Innovations
+
+1. **Real-Time Multimodal Guidance**: Combines vision, voice, and AI to create an interactive cooking experience
+2. **Adaptive Recipe System**: Dynamically adjusts recipes based on what you actually have
+3. **Privacy-First Design**: Camera analysis happens in real-time without recording
+4. **Hands-Free Operation**: Complete voice control means no touching screens with messy hands
+
+## Roadmap
+
+- **v0.8 Beta (Current)**: Core functionality with 50+ built-in recipes
+- **v0.9**: Enhanced equipment detection, more substitution options
+- **v1.0**: Full recipe import, premium subscription features
+- **Future**: Android support, smart appliance integration, social features
+
+## Contributing
+
+This project is currently in private beta. For access or questions, please contact the development team.
+
+## License
+
+Proprietary - All rights reserved
